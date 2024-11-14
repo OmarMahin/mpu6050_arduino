@@ -5,7 +5,7 @@ float gyroX, calibratedGyroX;
 
 float angleX = 0.0;
 
-int refreshRate = 50;
+int del = 50;
 
 void setup() {
 
@@ -26,13 +26,13 @@ void loop() {
 
   angleX += gyroX;
 
-  Serial.print("GyroX(deg/s): ");
+  Serial.print("GyroX(deg/s):");
   Serial.print(gyroX);
   Serial.print("  ");
-  Serial.print("AngleX(deg): ");
+  Serial.print("AngleX(deg):");
   Serial.println(angleX);
 
-  delay(refreshRate);
+  delay(del);
 }
 
 void mpu_setup() {
@@ -45,9 +45,10 @@ void mpu_setup() {
 }
 
 void raw_gyro_data(){
+  //low pass filter
   Wire.beginTransmission(0x68);
   Wire.write(0x1A);
-  Wire.write(0x03);
+  Wire.write(0x05);
   Wire.endTransmission();
 
   //gyro settings
@@ -56,22 +57,25 @@ void raw_gyro_data(){
   Wire.write(0x8);  // LSB sensitivity 65.5
   Wire.endTransmission();
 
+  //Reading gyro data
   Wire.beginTransmission(0x68);
   Wire.write(0x43);
   Wire.endTransmission();
 
   Wire.requestFrom(0x68, 6);
-  int64_t raw_gyro_x = Wire.read() << 8 | Wire.read();
+  int16_t raw_gyro_x = Wire.read() << 8 | Wire.read();
 
   gyroX = (float) raw_gyro_x;
 }
 
 void calibrated_gyro() {
   raw_gyro_data();
-  gyroX = (gyroX - calibratedGyroX) * ((refreshRate / 1000.0) / 65.5);
+  gyroX = (gyroX - calibratedGyroX) * ((del / 1000.0) / 65.5);
 }
 
 void calibration() {
+  pinMode(13,OUTPUT);
+  digitalWrite(13,HIGH);
   Serial.print("Calibrating");
   long sum = 0;
   for (int i = 0; i < 2000; i++) {
@@ -84,4 +88,5 @@ void calibration() {
   }
   calibratedGyroX = sum / 2000;
   Serial.println();
+  digitalWrite(13,LOW);
 }
